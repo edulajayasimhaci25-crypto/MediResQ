@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MediResQ - Patient Emergency & Medical Portal</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    #gisMap { height: 420px; border-radius: 8px; margin-top: 10px; border: 1px solid #334155; }
+    .portal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 850px) { .portal-grid { grid-template-columns: 1fr; } }
+    .hospital-card {
+      background: #1e293b;
+      padding: 14px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      margin-top: 10px;
+    }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      color: white;
+    }
+    .badge-primary { background: #0369a1; }
+    .badge-success { background: #059669; }
+    .app-form-box {
+      background: #0f172a;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 10px;
+      border-left: 4px solid #10b981;
+    }
+    .scroll-container {
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+    .scroll-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    .scroll-container::-webkit-scrollbar-thumb {
+      background: #38bdf8;
+      border-radius: 3px;
+    }
+    .btn-group {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="brand">
+      <a href="/" class="btn btn-secondary btn-sm" style="text-decoration: none; margin-right: 6px;">⬅️ Hub</a>
+      <span style="font-size: 1.2rem;">🚑</span>
+      <h1>MediResQ Emergency & Application Portal</h1>
+    </div>
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+  </header>
+
+  <main style="max-width: 1150px; margin: 20px auto; padding: 0 15px;">
+    <div class="portal-grid">
+      <!-- LEFT SECTION: APPLICATION & SOS FORM -->
+      <section class="card">
+        <h3>⚡ Emergency SOS & Patient Application</h3>
+        
+        <div class="form-group" style="margin-top: 15px;">
+          <label>PATIENT FULL NAME</label>
+          <input type="text" id="patientName" placeholder="Enter Patient Full Name" value="John Doe">
+        </div>
+
+        <div class="form-group">
+          <label>SELECT MEDICAL / EMERGENCY OPTION</label>
+          <select id="triageType" onchange="handleOptionChange()" style="width: 100%; padding: 10px; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 6px;">
+            <option value="1">🚨 1. Road Accident Emergency (Triggers Immediate Live SOS)</option>
+            <option value="2">🚨 2. Severe Cardiac Emergency (Triggers Immediate Live SOS)</option>
+            <option value="3">🏥 3. Severe Ward Bed Application (Select Disease & View Ranked Hospitals)</option>
+            <option value="4">🩺 4. Minor Disease & Cold/Fever OPD (Select Illness & View Nearby Clinics)</option>
+          </select>
+        </div>
+
+        <!-- OPTION 3 DISEASE SPECIALTY MENU -->
+        <div class="form-group hidden" id="diseaseTypeBox3">
+          <label style="color: #38bdf8;">SELECT SPECIALIST DISEASE CATEGORY (70% Success / 30% Cost Weight)</label>
+          <select id="diseaseType3" style="width: 100%; padding: 10px; background: #0f172a; color: #38bdf8; border: 1px solid #0284c7; border-radius: 6px; font-weight: bold;">
+            <option value="cardiology">🫀 Cardiology (Heart & Vascular)</option>
+            <option value="oncology">🎗️ Oncology (Cancer Care)</option>
+            <option value="neurology">🧠 Neurology (Brain & Spine)</option>
+            <option value="orthopedics">🦴 Orthopedics (Bones & Joints)</option>
+            <option value="general">🩺 General Medicine & Special Care</option>
+          </select>
+        </div>
+
+        <!-- OPTION 4 MINOR ILLNESS MENU -->
+        <div class="form-group hidden" id="diseaseTypeBox4">
+          <label style="color: #10b981;">SELECT MINOR ILLNESS CATEGORY (&lt; 1km Proximity / Reg Fee ₹200–₹300)</label>
+          <select id="diseaseType4" style="width: 100%; padding: 10px; background: #0f172a; color: #10b981; border: 1px solid #059669; border-radius: 6px; font-weight: bold;">
+            <option value="fever">🌡️ Viral Fever / Cold / Flu</option>
+            <option value="cough">🗣️ Cough & Bronchial Infection</option>
+            <option value="allergy">🫐 Skin Allergy & Rash</option>
+            <option value="minor_injury">🩹 Minor Injury / Dressing</option>
+            <option value="general">🩺 General Physician OPD</option>
+          </select>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-danger" id="btnSubmit" style="padding: 12px; font-weight: bold;" onclick="processPatientRequest()">
+            🚀 SUBMIT EMERGENCY SOS REQUEST
+          </button>
+          <button class="btn btn-secondary" style="padding: 12px; background: #dc2626; color: white; font-weight: bold;" onclick="stopSimulation()">
+            🛑 STOP SIMULATION
+          </button>
+        </div>
+
+        <div id="patientResult" class="card hidden" style="margin-top: 15px;"></div>
+      </section>
+
+      <!-- RIGHT SECTION: LIVE DIRECTIONAL ROUTE MAP -->
+      <section class="card">
+        <h3>🗺️ Live Directional Route Map</h3>
+        <div id="routeDistText" style="font-size: 0.85rem; color: #38bdf8; margin-bottom: 5px;">Awaiting location or dispatch...</div>
+        <div id="gisMap"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    let socket;
+    let map;
+    let markers = {};
+    let routeLine = null;
+    let patientLiveCoords = [12.9650, 77.6000];
+
+    const blueAmbulanceIcon = typeof L !== 'undefined' ? new L.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    }) : null;
+
+    const redPatientIcon = typeof L !== 'undefined' ? new L.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    }) : null;
+
+    const greenHospitalIcon = typeof L !== 'undefined' ? new L.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    }) : null;
+
+    function handleOptionChange() {
+      const triage = parseInt(document.getElementById('triageType').value);
+      const box3 = document.getElementById('diseaseTypeBox3');
+      const box4 = document.getElementById('diseaseTypeBox4');
+      const btn = document.getElementById('btnSubmit');
+
+      box3.classList.add('hidden');
+      box4.classList.add('hidden');
+
+      if (triage === 1 || triage === 2) {
+        btn.innerText = '🚀 SUBMIT EMERGENCY SOS REQUEST';
+        btn.style.background = '#ef4444';
+      } else if (triage === 3) {
+        box3.classList.remove('hidden');
+        btn.innerText = '🔍 RANK HOSPITALS (70% SUCCESS / 30% COST)';
+        btn.style.background = '#0284c7';
+      } else if (triage === 4) {
+        box4.classList.remove('hidden');
+        btn.innerText = '🔍 SHOW NEARBY OPD CLINICS (< 1KM)';
+        btn.style.background = '#059669';
+      }
+    }
+
+    function haversineCalc(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return (R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)))).toFixed(2);
+    }
+
+    function initMap() {
+      const mapEl = document.getElementById('gisMap');
+      if (!mapEl) return;
+
+      map = L.map('gisMap').setView(patientLiveCoords, 13);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      markers['PATIENT'] = L.marker(patientLiveCoords, { icon: redPatientIcon }).addTo(map).bindPopup('🔴 Patient Location').openPopup();
+
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          patientLiveCoords = [pos.coords.latitude, pos.coords.longitude];
+          markers['PATIENT'].setLatLng(patientLiveCoords);
+          map.panTo(patientLiveCoords);
+        });
+      }
+    }
+
+    function initSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      socket = new WebSocket(`${protocol}//${window.location.host}`);
+
+      socket.onopen = () => {
+        const statusEl = document.getElementById('connectionStatus');
+        if (statusEl) {
+          statusEl.innerText = '🟢 ONLINE';
+          statusEl.style.color = '#10b981';
+        }
+      };
+
+      socket.onmessage = (event) => {
+        handleLiveEvent(JSON.parse(event.data));
+      };
+    }
+
+    function showHospitalRoute(hospLat, hospLng, hospName) {
+      if (!map) return;
+
+      if (markers['HOSPITAL']) {
+        markers['HOSPITAL'].setLatLng([hospLat, hospLng]);
+      } else {
+        markers['HOSPITAL'] = L.marker([hospLat, hospLng], { icon: greenHospitalIcon }).addTo(map).bindPopup(`🏥 ${hospName}`).openPopup();
+      }
+
+      const points = [patientLiveCoords, [hospLat, hospLng]];
+
+      if (routeLine) {
+        routeLine.setLatLngs(points);
+        routeLine.setStyle({ color: '#38bdf8', weight: 4, dashArray: '6, 6' });
+      } else {
+        routeLine = L.polyline(points, { color: '#38bdf8', weight: 4, dashArray: '6, 6' }).addTo(map);
+      }
+
+      map.fitBounds(L.latLngBounds(points));
+
+      const dist = haversineCalc(patientLiveCoords[0], patientLiveCoords[1], hospLat, hospLng);
+      const distEl = document.getElementById('routeDistText');
+      if (distEl) distEl.innerText = `📍 Distance to ${hospName}: ${dist} km`;
+    }
+
+    async function stopSimulation() {
+      await fetch('/api/emergency/stop', { method: 'POST' });
+      showResult(`
+        <div style="border-left: 5px solid #ef4444; padding: 12px; background: #0f172a; border-radius: 6px;">
+          <strong style="color: #ef4444; font-size: 1rem;">🛑 SIMULATION STOPPED IN MIDDLE</strong><br><br>
+          Live GPS tracking halted and ambulance unit reset to base.
+        </div>
+      `);
+      if (markers['AMBULANCE']) {
+        map.removeLayer(markers['AMBULANCE']);
+        delete markers['AMBULANCE'];
+      }
+      if (markers['HOSPITAL']) {
+        map.removeLayer(markers['HOSPITAL']);
+        delete markers['HOSPITAL'];
+      }
+      if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      document.getElementById('routeDistText').innerText = 'Simulation Stopped.';
+    }
+
+    async function loadPatientStatusOnReload() {
+      try {
+        const res = await fetch('/api/patient/status');
+        const data = await res.json();
+
+        if (data.latestIncident && data.latestIncident.status !== 'STOPPED') {
+          const inc = data.latestIncident;
+          if (inc.status === 'PENDING_APPROVAL') {
+            showResult(`
+              <div style="border-left: 4px solid #f59e0b; padding: 12px; background: #0f172a; border-radius: 6px;">
+                <strong style="color: #f59e0b; font-size: 0.95rem;">⏳ Emergency SOS Request Transmitted (Awaiting Hospital Acceptance)</strong><br><br>
+                👤 Patient: <b>${inc.patientName}</b><br>
+                📍 Live GPS: <b>[${inc.patientLat.toFixed(4)}, ${inc.patientLng.toFixed(4)}]</b>
+              </div>
+            `);
+          } else if (inc.status === 'ACCEPTED') {
+            patientLiveCoords = [inc.patientLat, inc.patientLng];
+            markers['PATIENT'].setLatLng(patientLiveCoords);
+
+            if (data.ambulance) {
+              updateAmbulanceMapPosition(data.ambulance.lat, data.ambulance.lng);
+            }
+
+            showResult(`
+              <div style="border-left: 5px solid #10b981; padding: 12px; background: #0f172a; border-radius: 6px;">
+                <strong style="color: #10b981; font-size: 1rem;">🚑 LIVE EMERGENCY DISPATCH ACTIVE</strong><br><br>
+                🏥 Hospital: <b style="color: #38bdf8;">${inc.assignedHospital}</b><br>
+                👤 Patient Name: <b>${inc.patientName}</b><br>
+                🚑 Dispatched Unit: <b style="color: #f59e0b;">${inc.assignedAmbulance}</b><br>
+                📍 Patient Location: <b style="color: #10b981;">[${inc.patientLat.toFixed(4)}, ${inc.patientLng.toFixed(4)}]</b>
+              </div>
+            `);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading status on reload:", err);
+      }
+    }
+
+    function updateAmbulanceMapPosition(ambLat, ambLng) {
+      if (!map) return;
+
+      if (markers['AMBULANCE']) {
+        markers['AMBULANCE'].setLatLng([ambLat, ambLng]);
+      } else {
+        markers['AMBULANCE'] = L.marker([ambLat, ambLng], { icon: blueAmbulanceIcon }).addTo(map).bindPopup('🚑 Dispatched Ambulance AMB-101 (Blue Marker)').openPopup();
+      }
+
+      const points = [[ambLat, ambLng], patientLiveCoords];
+      if (routeLine) {
+        routeLine.setLatLngs(points);
+        routeLine.setStyle({ color: '#ef4444', weight: 4, dashArray: '6, 6' });
+      } else {
+        routeLine = L.polyline(points, { color: '#ef4444', weight: 4, dashArray: '6, 6' }).addTo(map);
+      }
+
+      map.fitBounds(L.latLngBounds(points));
+
+      const dist = haversineCalc(ambLat, ambLng, patientLiveCoords[0], patientLiveCoords[1]);
+      const distEl = document.getElementById('routeDistText');
+      if (distEl) distEl.innerText = `Live Ambulance Distance: ${dist} km`;
+    }
+
+    function handleLiveEvent(data) {
+      if (data.topic === 'DRIVER_TELEMETRY') {
+        updateAmbulanceMapPosition(data.payload.lat, data.payload.lng);
+      } else if (data.topic === 'SIMULATION_STOPPED') {
+        if (markers['AMBULANCE']) {
+          map.removeLayer(markers['AMBULANCE']);
+          delete markers['AMBULANCE'];
+        }
+        if (routeLine) {
+          map.removeLayer(routeLine);
+          routeLine = null;
+        }
+        showResult(`
+          <div style="border-left: 5px solid #ef4444; padding: 12px; background: #0f172a; border-radius: 6px;">
+            <strong style="color: #ef4444; font-size: 1rem;">🛑 SIMULATION HALTED</strong><br><br>
+            Simulation stopped in middle.
+          </div>
+        `);
+      } else if (data.topic === 'SOS_STATUS_UPDATED') {
+        const payload = data.payload;
+        if (payload.status === 'ACCEPTED') {
+          const inc = payload.incident;
+          patientLiveCoords = [inc.patientLat, inc.patientLng];
+          markers['PATIENT'].setLatLng(patientLiveCoords);
+
+          showResult(`
+            <div style="border-left: 5px solid #10b981; padding: 12px; background: #0f172a; border-radius: 6px;">
+              <strong style="color: #10b981; font-size: 1rem;">🚑 LIVE EMERGENCY DISPATCH ACTIVE</strong><br><br>
+              🏥 Accepting Hospital: <b style="color: #38bdf8;">${inc.assignedHospital}</b><br>
+              👤 Patient Name: <b>${inc.patientName}</b><br>
+              🚑 Assigned Unit: <b style="color: #f59e0b;">${inc.assignedAmbulance}</b><br>
+              📍 Location: <b style="color: #10b981;">[${inc.patientLat.toFixed(4)}, ${inc.patientLng.toFixed(4)}]</b>
+            </div>
+          `);
+        }
+      } else if (data.topic === 'AMBULANCE_ARRIVED') {
+        showResult(`
+          <div style="border-left: 5px solid #10b981; padding: 12px; background: #0f172a; border-radius: 6px;">
+            <strong style="color: #10b981; font-size: 1rem;">🚑 AMBULANCE HAS ARRIVED AT YOUR EXACT LOCATION!</strong><br><br>
+            The emergency medical team is on site.
+          </div>
+        `);
+      } else if (data.topic === 'APPLICATION_CONFIRMED') {
+        const app = data.payload.application;
+        showResult(`
+          <div style="border-left: 5px solid #10b981; padding: 14px; background: #0f172a; border-radius: 6px;">
+            <strong style="color: #10b981; font-size: 1.1rem;">✅ BOOKING CONFIRMED BY HOSPITAL!</strong><br><br>
+            Token Number: <b style="color: #38bdf8;">${app.tokenNo}</b><br>
+            Hospital Name: <b>${app.hospitalName}</b><br>
+            Assigned Specialist: <b>${app.assignedDoctor}</b><br>
+            <span style="color: #f59e0b; font-size: 1rem; font-weight: bold; display: inline-block; margin-top: 6px;">
+              🕒 Final Allotted Slot: ${app.scheduledSlot || app.doctorSlot}
+            </span>
+          </div>
+        `);
+      } else if (data.topic === 'APPLICATION_REJECTED') {
+        const app = data.payload.application;
+        showResult(`
+          <div style="border-left: 5px solid #ef4444; padding: 14px; background: #0f172a; border-radius: 6px;">
+            <strong style="color: #ef4444; font-size: 1.1rem;">❌ APPLICATION DECLINED BY HOSPITAL</strong><br><br>
+            Token Number: <b>${app.tokenNo}</b><br>
+            The hospital was unable to accommodate this request. Please select another slot or nearby clinic.
+          </div>
+        `);
+      }
+    }
+
+    async function processPatientRequest() {
+      const nameEl = document.getElementById('patientName');
+      const triageEl = document.getElementById('triageType');
+      const name = nameEl && nameEl.value.trim() ? nameEl.value.trim() : 'John Doe';
+      const triage = triageEl ? parseInt(triageEl.value) : 1;
+
+      if (triage === 1 || triage === 2) {
+        showResult(`
+          <div style="border-left: 4px solid #f59e0b; padding: 12px; background: #0f172a; border-radius: 6px;">
+            <strong style="color: #f59e0b; font-size: 0.95rem;">⏳ Emergency SOS Request Transmitted!</strong><br><br>
+            Transmitting live GPS coordinates [${patientLiveCoords[0].toFixed(4)}, ${patientLiveCoords[1].toFixed(4)}] to Emergency Ward...
+          </div>
+        `);
+
+        await fetch('/api/emergency/trigger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ patientName: name, triageType: triage, patientLat: patientLiveCoords[0], patientLng: patientLiveCoords[1] })
+        });
+      } else if (triage === 3) {
+        const disease = document.getElementById('diseaseType3').value;
+        fetchOption3Hospitals(name, disease);
+      } else if (triage === 4) {
+        const disease = document.getElementById('diseaseType4').value;
+        fetchOption4Hospitals(name, disease);
+      }
+    }
+
+    async function fetchOption3Hospitals(patientName, disease) {
+      showResult(`<div style="color: #38bdf8;">🔍 Ranking hospitals for ${disease.toUpperCase()} (70% Success Rate / 30% Cost Weighting)...</div>`);
+
+      try {
+        const res = await fetch(`/api/hospitals/option3-rank?lat=${patientLiveCoords[0]}&lng=${patientLiveCoords[1]}&disease=${disease}`);
+        const topHospitals = await res.json();
+
+        let html = `
+          <div style="background: #0f172a; padding: 14px; border-radius: 8px; border-left: 5px solid #38bdf8;">
+            <h3 style="color: #38bdf8; margin-top: 0;">🏥 Option 3: Ranked Specialized Hospitals (${topHospitals.length} Found)</h3>
+            <p style="font-size: 0.82rem; color: #94a3b8;">Avg Cost > ₹18,000 | Reg Fee ₹300–₹500 | Formula: 70% Success + 30% Cost Score</p>
+            <div class="scroll-container" style="display: grid; gap: 10px; margin-top: 12px;">
+        `;
+
+        topHospitals.forEach((h, index) => {
+          html += `
+            <div class="hospital-card">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="color: #f8fafc; font-size: 0.95rem;">#${index + 1} ${h.name}</strong>
+                <span class="badge badge-primary">${h.diseaseSuccessPct}% Success Rate</span>
+              </div>
+              <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 6px;">
+                📍 Distance: <b>${h.distanceKm} km</b> | 💳 Application Fee: <b style="color:#38bdf8;">₹${h.registrationFee}</b><br>
+                💰 Avg Treatment Cost: <b>₹${h.avgTreatmentCost}</b><br>
+                👨‍⚕️ Assigned Specialist: <b>${h.assignedDoctor}</b>
+              </div>
+
+              <button class="btn btn-sm btn-secondary" style="margin-top: 6px; width: 100%; font-size: 0.8rem; background: #0284c7; color: white;" onclick="showHospitalRoute(${h.lat}, ${h.lng}, '${h.name}')">
+                📍 View Route from My Location to Hospital
+              </button>
+
+              <div class="app-form-box">
+                <div style="font-size: 0.82rem; font-weight: bold; color: #10b981; margin-bottom: 6px;">📋 Complete Ward Bed Application</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <input type="text" id="phone_opt3_${h.id}" placeholder="Contact Phone Number" value="+91 9876543210" style="padding: 6px; font-size: 0.8rem; background: #1e293b; color: white; border: 1px solid #334155; border-radius: 4px;">
+                  <select id="slot_opt3_${h.id}" style="padding: 6px; font-size: 0.8rem; background: #1e293b; color: white; border: 1px solid #334155; border-radius: 4px;">
+                    ${h.availableSlots.map(s => `<option value="${s}">${s}</option>`).join('')}
+                  </select>
+                </div>
+                <button class="btn btn-sm btn-primary" style="margin-top: 8px; width: 100%; font-weight: bold;" onclick="submitOption3App('${h.id}', '${patientName}', '${disease}', ${h.lat}, ${h.lng}, '${h.name}')">
+                  ✅ Submit Application & Pay Fee (₹${h.registrationFee})
+                </button>
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div></div>`;
+        showResult(html);
+      } catch (err) {
+        showResult(`<div style="color: #ef4444;">❌ Failed to load Option 3 hospital list.</div>`);
+      }
+    }
+
+    async function fetchOption4Hospitals(patientName, disease) {
+      showResult(`<div style="color: #10b981;">🔍 Ranking nearby OPD clinics for ${disease.toUpperCase()} (< 1km Proximity)...</div>`);
+
+      try {
+        const res = await fetch(`/api/hospitals/option4-rank?lat=${patientLiveCoords[0]}&lng=${patientLiveCoords[1]}&disease=${disease}`);
+        const topHospitals = await res.json();
+
+        let html = `
+          <div style="background: #0f172a; padding: 14px; border-radius: 8px; border-left: 5px solid #10b981;">
+            <h3 style="color: #10b981; margin-top: 0;">🩺 Option 4: Nearby OPD Clinics (${topHospitals.length} Found)</h3>
+            <p style="font-size: 0.82rem; color: #94a3b8;">Proximity < 1km | Reg Fee ₹200–₹300 | Avg Cost ≤ ₹2,000</p>
+            <div class="scroll-container" style="display: grid; gap: 10px; margin-top: 12px;">
+        `;
+
+        topHospitals.forEach((h, index) => {
+          html += `
+            <div class="hospital-card">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="color: #f8fafc; font-size: 0.95rem;">#${index + 1} ${h.name}</strong>
+                <span class="badge badge-success">${h.distanceKm} km away</span>
+              </div>
+              <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 6px;">
+                📍 Proximity: <b>${h.distanceKm} km (< 1km Zone)</b> | 💳 App Fee: <b style="color:#10b981;">₹${h.registrationFee}</b><br>
+                🩺 OPD Consultation Fee: <b>₹${h.treatmentCost}</b> | 👨‍⚕️ Doctor: <b>${h.assignedDoctor}</b>
+              </div>
+
+              <button class="btn btn-sm btn-secondary" style="margin-top: 6px; width: 100%; font-size: 0.8rem; background: #059669; color: white;" onclick="showHospitalRoute(${h.lat}, ${h.lng}, '${h.name}')">
+                📍 View Route from My Location to Clinic
+              </button>
+
+              <div class="app-form-box">
+                <div style="font-size: 0.82rem; font-weight: bold; color: #10b981; margin-bottom: 6px;">🎟️ Complete OPD Appointment Booking</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <input type="text" id="phone_opt4_${h.id}" placeholder="Contact Phone Number" value="+91 9876543210" style="padding: 6px; font-size: 0.8rem; background: #1e293b; color: white; border: 1px solid #334155; border-radius: 4px;">
+                  <select id="slot_opt4_${h.id}" style="padding: 6px; font-size: 0.8rem; background: #1e293b; color: white; border: 1px solid #334155; border-radius: 4px;">
+                    ${h.availableSlots.map(s => `<option value="${s}">${s}</option>`).join('')}
+                  </select>
+                </div>
+                <button class="btn btn-sm btn-success" style="margin-top: 8px; width: 100%; font-weight: bold;" onclick="submitOption4App('${h.id}', '${patientName}', '${disease}', ${h.lat}, ${h.lng}, '${h.name}')">
+                  ✅ Book OPD Appointment (Fee: ₹${h.registrationFee})
+                </button>
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div></div>`;
+        showResult(html);
+      } catch (err) {
+        showResult(`<div style="color: #ef4444;">❌ Failed to load Option 4 clinic list.</div>`);
+      }
+    }
+
+    async function submitOption3App(hospitalId, patientName, diseaseType, hospLat, hospLng, hospName) {
+      const phone = document.getElementById(`phone_opt3_${hospitalId}`).value;
+      const slot = document.getElementById(`slot_opt3_${hospitalId}`).value;
+
+      showHospitalRoute(hospLat, hospLng, hospName);
+
+      const res = await fetch('/api/hospital/apply-option3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hospitalId, patientName, diseaseType, contactNumber: phone, scheduledSlot: slot })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showResult(`
+          <div style="border-left: 5px solid #f59e0b; padding: 14px; background: #0f172a; border-radius: 6px;">
+            <strong style="color: #f59e0b; font-size: 1.05rem;">⏳ APPLICATION SUBMITTED TO HOSPITAL PORTAL</strong><br><br>
+            Token Number: <b style="color: #38bdf8;">${data.registration.tokenNo}</b><br>
+            Hospital Name: <b>${data.registration.hospitalName}</b><br>
+            Requested Slot: <b>${data.registration.scheduledSlot}</b><br><br>
+            <i>Status: Awaiting hospital time allotment confirmation...</i>
+          </div>
+        `);
+      }
+    }
+
+    async function submitOption4App(hospitalId, patientName, diseaseType, hospLat, hospLng, hospName) {
+      const phone = document.getElementById(`phone_opt4_${hospitalId}`).value;
+      const slot = document.getElementById(`slot_opt4_${hospitalId}`).value;
+
+      showHospitalRoute(hospLat, hospLng, hospName);
+
+      const res = await fetch('/api/hospital/apply-option4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hospitalId, patientName, diseaseType, contactNumber: phone, scheduledSlot: slot })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showResult(`
+          <div style="border-left: 5px solid #f59e0b; padding: 14px; background: #0f172a; border-radius: 6px;">
+            <strong style="color: #f59e0b; font-size: 1.05rem;">⏳ OPD BOOKING REQUEST SENT TO CLINIC</strong><br><br>
+            Token Number: <b style="color: #38bdf8;">${data.appointment.tokenNo}</b><br>
+            Clinic Name: <b>${data.appointment.hospitalName}</b><br>
+            Requested Slot: <b>${data.appointment.doctorSlot}</b><br><br>
+            <i>Status: Awaiting clinic time slot confirmation...</i>
+          </div>
+        `);
+      }
+    }
+
+    function showResult(html) {
+      const el = document.getElementById('patientResult');
+      if (el) {
+        el.innerHTML = html;
+        el.classList.remove('hidden');
+      }
+    }
+
+    window.onload = () => {
+      initMap();
+      initSocket();
+      loadPatientStatusOnReload();
+    };
+  </script>
+</body>
+</html>

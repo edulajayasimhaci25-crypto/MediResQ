@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MediResQ - Health Education & Famous Doctor Webinars</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .event-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-left: 5px solid #10b981;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+    .event-card.paid {
+      border-left-color: #f59e0b;
+    }
+    .price-badge {
+      background: #059669;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+    .price-badge.fee {
+      background: #d97706;
+    }
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: #1e293b;
+      padding: 24px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      border: 1px solid #38bdf8;
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="brand">
+      <a href="/" class="btn btn-secondary btn-sm" style="text-decoration: none; margin-right: 6px;">⬅️ Hub</a>
+      <span style="font-size: 1.2rem;">🎓</span>
+      <h1>MediResQ Famous Doctor Webinars & Health Sessions</h1>
+    </div>
+  </header>
+
+  <main style="max-width: 900px; margin: 20px auto; padding: 0 15px;">
+    <section class="card">
+      <h3 style="color: #38bdf8;">🎓 Live Specialist Workshops & Famous Doctor Keynotes</h3>
+      <p style="font-size: 0.88rem; color: #94a3b8;">Directly fetch and register for medical awareness events hosted by renowned hospital specialists.</p>
+      
+      <div id="eventsContainer" style="margin-top: 15px;"></div>
+    </section>
+  </main>
+
+  <!-- APPLICATION FORM MODAL -->
+  <div id="appModal" class="modal-overlay hidden">
+    <div class="modal-content card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="modalTitle" style="color: #38bdf8; margin: 0;">Event Joining Application Form</h3>
+        <button onclick="closeModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;">✖</button>
+      </div>
+      
+      <p style="font-size: 0.85rem; color: #cbd5e1; margin-top: 8px;" id="modalSubtitle"></p>
+
+      <div style="margin-top: 12px;">
+        <label style="font-size: 0.8rem; color: #94a3b8;">APPLICANT FULL NAME</label>
+        <input type="text" id="applicantName" placeholder="Enter applicant full name" value="John Doe" style="width: 100%; padding: 8px; margin-top: 4px; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px;">
+
+        <label style="font-size: 0.8rem; color: #94a3b8; margin-top: 10px; display: block;">PHONE NUMBER / CONTACT</label>
+        <input type="text" id="applicantContact" placeholder="+91 9876543210" value="+91 9876543210" style="width: 100%; padding: 8px; margin-top: 4px; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px;">
+
+        <label style="font-size: 0.8rem; color: #94a3b8; margin-top: 10px; display: block;">MEDICAL BACKGROUND / REASON FOR JOINING</label>
+        <textarea id="applicantHistory" placeholder="Share specific health concerns or goals for attending this event..." style="width: 100%; height: 70px; padding: 8px; margin-top: 4px; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px;">Requesting session entry for preventive health awareness.</textarea>
+
+        <div id="paymentBox" style="margin-top: 12px; padding: 10px; background: #0f172a; border-radius: 6px; font-size: 0.85rem; color: #f59e0b;" class="hidden">
+          💵 <b>Event Registration Fee:</b> <span id="paymentAmount">FREE</span> (Required for entry confirmation)
+        </div>
+
+        <button class="btn btn-primary" style="width: 100%; margin-top: 16px; font-weight: bold;" onclick="submitApplication()">📝 Submit Event Application</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // FAMOUS DOCTORS AND SPECIALIST EVENTS LIST
+    const events = [
+      {
+        id: 'EVT-01',
+        title: '🫀 Emergency First Aid & Cardiac CPR Summit',
+        doctor: 'Prof. Dr. Nagamalesh U M (Lead Consultant - Cardiology)',
+        hospital: 'City Trauma & Specialty Center / Aster CMI',
+        time: 'Today at 04:00 PM',
+        fee: 'FREE',
+        isPaid: false,
+        desc: 'Live CPR demonstrations, emergency cardiac triage protocols, and immediate resuscitation techniques.'
+      },
+      {
+        id: 'EVT-02',
+        title: '🧠 Advanced Neuro-Robotic Surgery & Brain Health Workshop',
+        doctor: 'Dr. Ravi Gopal Varma (Director - Centre of Excellence in Neurosciences)',
+        hospital: 'Regional Neuro & Specialty Center',
+        time: 'Tomorrow at 11:00 AM',
+        fee: '₹350',
+        isPaid: true,
+        desc: 'Keynote on brain robotic surgery, acute stroke intervention, and trigeminal neuralgia treatments.'
+      },
+      {
+        id: 'EVT-03',
+        title: '🎗️ Comprehensive Oncology Screening & Cancer Protocol',
+        doctor: 'Dr. Linu Abraham Jacob (HOD & Senior Consultant - Medical Oncology)',
+        hospital: 'Apollo Heart & Cancer Care',
+        time: '28th Feb at 03:00 PM',
+        fee: '₹500',
+        isPaid: true,
+        desc: 'Early detection strategies for carcinomas, modern chemotherapy advancements, and patient management.'
+      },
+      {
+        id: 'EVT-04',
+        title: '🩸 Vascular Surgery & Endovascular Health Seminar',
+        doctor: 'Dr. Venkatesh Reddy (Eminent Vascular Surgeon - 30+ Yrs Exp)',
+        hospital: 'Metro Community Hospital',
+        time: '02nd Mar at 05:00 PM',
+        fee: 'FREE',
+        isPaid: false,
+        desc: 'Understanding vascular health, arterial interventions, and preventive care for circulatory conditions.'
+      },
+      {
+        id: 'EVT-05',
+        title: '🥗 Preventive Nutrition & Diabetic Lifestyle Management',
+        doctor: 'Dr. Kavita Patel (General Physician & Diabetologist)',
+        hospital: 'City Trauma & Specialty Center',
+        time: '05th Mar at 10:30 AM',
+        fee: 'FREE',
+        isPaid: false,
+        desc: 'Practical guidance on metabolic health, diabetic diet planning, and preventing insulin resistance.'
+      }
+    ];
+
+    let selectedEvent = null;
+
+    function renderEvents() {
+      let html = '';
+      events.forEach((evt, idx) => {
+        html += `
+          <div class="event-card ${evt.isPaid ? 'paid' : ''}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <h4 style="margin: 0; color: #f8fafc; font-size: 1.05rem;">${evt.title}</h4>
+                <div style="font-size: 0.88rem; color: #38bdf8; margin-top: 4px;">
+                  👨‍⚕️ Guest Speaker: <b>${evt.doctor}</b>
+                </div>
+                <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 2px;">
+                  🏥 Facility: ${evt.hospital} | ⏰ Schedule: ${evt.time}
+                </div>
+              </div>
+              <span class="price-badge ${evt.isPaid ? 'fee' : ''}">${evt.fee}</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #cbd5e1; margin-top: 8px;">${evt.desc}</p>
+            <button class="btn btn-sm btn-primary" style="margin-top: 8px; font-weight: bold;" onclick="openModal(${idx})">
+              🎟️ Apply to Join Event (${evt.fee})
+            </button>
+          </div>
+        `;
+      });
+      document.getElementById('eventsContainer').innerHTML = html;
+    }
+
+    function openModal(index) {
+      selectedEvent = events[index];
+      document.getElementById('modalTitle').innerText = selectedEvent.title;
+      document.getElementById('modalSubtitle').innerText = `Guest Speaker: ${selectedEvent.doctor}`;
+
+      const payBox = document.getElementById('paymentBox');
+      if (selectedEvent.isPaid) {
+        payBox.classList.remove('hidden');
+        document.getElementById('paymentAmount').innerText = selectedEvent.fee;
+      } else {
+        payBox.classList.add('hidden');
+      }
+
+      document.getElementById('appModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('appModal').classList.add('hidden');
+    }
+
+    async function submitApplication() {
+      const name = document.getElementById('applicantName').value.trim();
+      const contact = document.getElementById('applicantContact').value.trim();
+      const history = document.getElementById('applicantHistory').value.trim();
+
+      if (!name) {
+        alert("Please enter the applicant's name.");
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/education/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patientName: name,
+            sessionTitle: `${selectedEvent.title} (Keynote: ${selectedEvent.doctor})`,
+            contact: contact,
+            medicalHistory: history
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          alert(`✅ Event Registration Submitted!\nApplication ID: ${data.application.id}\nYour registration has been processed and automatically saved to your Medical Records history.`);
+          closeModal();
+        }
+      } catch (err) {
+        alert("⚠️ Registration failed. Please check server connection.");
+      }
+    }
+
+    window.onload = renderEvents;
+  </script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MediResQ - Hospital Directory Portal</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .search-bar-container {
+      position: relative;
+      margin-bottom: 16px;
+      max-width: 450px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      font-size: 0.9rem;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #f8fafc;
+      outline: none;
+    }
+
+    .search-input:focus { border-color: #38bdf8; }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      pointer-events: none;
+    }
+
+    .directory-table-container {
+      max-height: 480px;
+      overflow-y: auto;
+      border: 1px solid #334155;
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #1e293b;
+      color: #38bdf8;
+      padding: 12px;
+      border-bottom: 2px solid #334155;
+      z-index: 2;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #334155;
+    }
+
+    tr:hover { background: #1e293b80; }
+
+    .badge-ward {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.75rem;
+    }
+
+    .badge-emerg { background: #7f1d1d; color: #fca5a5; }
+    .badge-severe { background: #78350f; color: #fde68a; }
+    .badge-normal { background: #064e3b; color: #6ee7b7; }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="brand">
+      <a href="/" class="btn btn-secondary btn-sm" style="text-decoration: none; margin-right: 6px;">⬅️ Hub</a>
+      <span style="font-size: 1.2rem;">🏥</span>
+      <h1>Registered Hospital Network Directory</h1>
+    </div>
+    <div id="connectionStatus" class="connection-status">Connecting...</div>
+  </header>
+
+  <main style="max-width: 1200px; margin: 20px auto; padding: 0 15px;">
+    <section class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 12px;">
+        <h2>📋 Registered Hospitals Database</h2>
+        <span id="hospitalBadgeCount" style="font-size: 0.8rem; color: #38bdf8; background: #0f172a; padding: 5px 12px; border-radius: 12px; border: 1px solid #334155;">
+          Loading facility records...
+        </span>
+      </div>
+
+      <div class="search-bar-container">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="directorySearchInput" class="search-input" placeholder="Search hospital by name or ID..." onkeyup="filterDirectory()">
+      </div>
+
+      <div class="directory-table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Hospital Name</th>
+              <th>Emergency Beds</th>
+              <th>Severe Ward</th>
+              <th>Normal Ward</th>
+              <th>Reg Fee</th>
+              <th>Chronic Cost</th>
+              <th>Minor Cost</th>
+              <th>Cardiology</th>
+              <th>Oncology</th>
+            </tr>
+          </thead>
+          <tbody id="directoryTableBody">
+            <tr>
+              <td colspan="10" style="text-align: center; color: #94a3b8; padding: 20px;">
+                Retrieving network hospital records...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="directory.js"></script>
+</body>
+</html>

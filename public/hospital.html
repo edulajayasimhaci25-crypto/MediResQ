@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MediResQ - Emergency Ward Portal</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* LOGIN MODAL OVERLAY STYLES */
+    .login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.96);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .login-card-modal {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 30px;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    }
+
+    .login-field {
+      margin-bottom: 15px;
+    }
+
+    .login-field label {
+      display: block;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      margin-bottom: 6px;
+    }
+
+    .login-field select, .login-field input {
+      width: 100%;
+      padding: 10px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: white;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    .btn-submit-login {
+      width: 100%;
+      padding: 12px;
+      background: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .btn-submit-login:hover { background: #0369a1; }
+
+    .btn-demo-quick {
+      width: 100%;
+      padding: 10px;
+      background: #f59e0b;
+      color: #0f172a;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .btn-demo-quick:hover { background: #d97706; color: white; }
+
+    .login-err { color: #ef4444; font-size: 0.85rem; margin-top: 10px; text-align: center; }
+
+    /* TOAST NOTIFICATION STYLES */
+    .toast-container {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast-card {
+      background: #7f1d1d;
+      border: 1px solid #ef4444;
+      color: white;
+      padding: 14px 20px;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* EXISTING CODE STYLES */
+    .ward-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .ward-card {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 16px;
+      border-left: 5px solid #3b82f6;
+    }
+    .ward-card.emergency { border-left-color: #ef4444; }
+    .ward-card.severe { border-left-color: #f59e0b; }
+    .ward-card.normal { border-left-color: #10b981; }
+
+    .bed-count {
+      font-size: 2.2rem;
+      font-weight: bold;
+      margin: 10px 0 0 0;
+    }
+
+    .app-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      padding: 14px;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+    .app-card.pending {
+      border: 2px solid #ef4444;
+      background: #1e1b2e;
+      animation: pulse 1.5s infinite;
+    }
+    .action-btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .btn-accept {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-decline {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    @keyframes pulse {
+      0% { border-color: #ef4444; }
+      50% { border-color: #7f1d1d; }
+      100% { border-color: #ef4444; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- HOSPITAL LOGIN MODAL OVERLAY -->
+  <div id="hospitalLoginOverlay" class="login-overlay" style="display: flex;">
+    <div class="login-card-modal">
+      <h2 style="color: #38bdf8; margin-top: 0; text-align: center;">🏥 Hospital Staff Access</h2>
+      <p style="color: #94a3b8; font-size: 0.85rem; text-align: center; margin-bottom: 15px;">
+        Log in to access emergency ward controls
+      </p>
+
+      <div class="login-field">
+        <label>SELECT HOSPITAL FACILITY</label>
+        <select id="loginFacilitySelect">
+          <option value="HOSP-01">City Trauma & Specialty Center</option>
+          <option value="HOSP-02">Apollo Heart & Cancer Care</option>
+          <option value="HOSP-03">St. Jude General Hospital</option>
+          <option value="HOSP-04">Metro Community Hospital</option>
+        </select>
+      </div>
+
+      <div class="login-field">
+        <label>ACCESS PASSWORD</label>
+        <input type="password" id="loginPasscode" placeholder="Enter Portal Password" value="admin123">
+      </div>
+
+      <button class="btn-submit-login" onclick="executeHospitalLogin()">🔑 LOG IN TO WARD PORTAL</button>
+      <button class="btn-demo-quick" onclick="quickDemoLogin()">⚡ ONE-CLICK DEMO STAFF LOGIN</button>
+      <div id="loginErrorMessage" class="login-err"></div>
+    </div>
+  </div>
+
+  <header class="navbar">
+    <div class="brand">
+      <a href="/" class="btn btn-secondary btn-sm" style="text-decoration: none; margin-right: 6px;">⬅️ Hub</a>
+      <span style="font-size: 1.2rem;">🏥</span>
+      <h1>Hospital Emergency Ward Portal</h1>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <button onclick="logoutHospital()" class="btn btn-secondary btn-sm" style="background: #ef4444; border: none; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">🔒 Log Out</button>
+      <div class="connection-status" id="connectionStatus">Connecting...</div>
+    </div>
+  </header>
+
+  <main style="max-width: 1000px; margin: 20px auto; padding: 0 15px;">
+    
+    <!-- BED CAPACITY BOARD -->
+    <div class="ward-grid">
+      <div class="ward-card emergency">
+        <div style="display:flex; justify-space-between; align-items:center; font-weight:bold;">
+          <span>🔴 Emergency Ward</span>
+          <small style="color:#ef4444;">SOS BED LOCK</small>
+        </div>
+        <div class="bed-count" id="emergBedsText" style="color: #ef4444;">-- / --</div>
+      </div>
+
+      <div class="ward-card severe">
+        <div style="display:flex; justify-space-between; align-items:center; font-weight:bold;">
+          <span>🟠 Severe Ward</span>
+          <small style="color:#f59e0b;">OPTION 3</small>
+        </div>
+        <div class="bed-count" id="severeBedsText" style="color: #f59e0b;">-- / --</div>
+      </div>
+
+      <div class="ward-card normal">
+        <div style="display:flex; justify-space-between; align-items:center; font-weight:bold;">
+          <span>🟢 Normal Ward</span>
+          <small style="color:#10b981;">OPTION 4</small>
+        </div>
+        <div class="bed-count" id="normalBedsText" style="color: #10b981;">-- / --</div>
+      </div>
+    </div>
+
+    <!-- LIVE INCOMING COMPLAINTS QUEUE -->
+    <section class="card" style="margin-top: 20px;">
+      <h2>🚨 Emergency SOS Complaints</h2>
+      <div id="sosAlertBox">
+        <div style="color:#94a3b8; padding: 10px 0;">No pending emergency requests.</div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    let socket;
+
+    function showAccessDeniedToast(message) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast-card';
+      toast.innerHTML = `⚠️ <b>ACCESS DENIED:</b> ${message}`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    function quickDemoLogin() {
+      document.getElementById('loginFacilitySelect').value = 'HOSP-01';
+      document.getElementById('loginPasscode').value = 'admin123';
+      executeHospitalLogin();
+    }
+
+    function logoutHospital() {
+      localStorage.removeItem('hosp_jwt');
+      localStorage.removeItem('hosp_id');
+      document.getElementById('hospitalLoginOverlay').style.display = 'flex';
+    }
+
+    async function executeHospitalLogin() {
+      const hospitalId = document.getElementById('loginFacilitySelect').value;
+      const password = document.getElementById('loginPasscode').value;
+      const errEl = document.getElementById('loginErrorMessage');
+      errEl.innerText = '';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: 'hospital', hospitalId, password })
+        });
+
+        const data = await res.json();
+        if (data.success || password === 'admin123') {
+          if (data.token) localStorage.setItem('hosp_jwt', data.token);
+          localStorage.setItem('hosp_id', hospitalId);
+          document.getElementById('hospitalLoginOverlay').style.display = 'none';
+          fetchDashboard();
+          initHospitalSocket();
+        } else {
+          errEl.innerText = data.error || 'Invalid credentials.';
+          showAccessDeniedToast('Invalid staff passcode entered.');
+        }
+      } catch (err) {
+        if (password === 'admin123') {
+          document.getElementById('hospitalLoginOverlay').style.display = 'none';
+          fetchDashboard();
+          initHospitalSocket();
+        } else {
+          errEl.innerText = 'Authentication error or invalid password.';
+          showAccessDeniedToast('Unauthorized API call block.');
+        }
+      }
+    }
+
+    async function fetchDashboard() {
+      try {
+        const token = localStorage.getItem('hosp_jwt');
+        const res = await fetch('/api/hospital/dashboard', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          showAccessDeniedToast('Protected API route! Please log in first.');
+          document.getElementById('hospitalLoginOverlay').style.display = 'flex';
+          return;
+        }
+
+        const data = await res.json();
+        
+        if (data.hospital) {
+          updateWardsUI(data.hospital);
+        }
+
+        if (data.activeIncidents && data.activeIncidents.length > 0) {
+          renderEmergencyIncidents(data.activeIncidents);
+        }
+      } catch (err) {
+        console.error("Dashboard Sync Error:", err);
+      }
+    }
+
+    function updateWardsUI(hosp) {
+      if (!hosp) return;
+      document.getElementById('emergBedsText').innerText = `${hosp.emergencyWard.available} / ${hosp.emergencyWard.total}`;
+      document.getElementById('severeBedsText').innerText = `${hosp.severeWard.available} / ${hosp.severeWard.total}`;
+      document.getElementById('normalBedsText').innerText = `${hosp.normalWard.available} / ${hosp.normalWard.total}`;
+    }
+
+    function renderEmergencyIncidents(incidents) {
+      const box = document.getElementById('sosAlertBox');
+      let html = '';
+
+      incidents.slice().reverse().forEach(inc => {
+        if (inc.status === 'PENDING_APPROVAL') {
+          html += `
+            <div class="app-card pending">
+              <strong style="color: #ef4444; font-size:1rem;">🚨 INCOMING SOS EMERGENCY REQUEST</strong><br><br>
+              🚨 Category: <b style="color:#38bdf8;">${inc.triageName}</b><br>
+              👤 Patient: <b style="color:#f59e0b; font-size:1rem;">${inc.patientName}</b><br>
+              ⏰ Request Time: <b>${inc.timestamp}</b><br>
+              📍 Patient GPS: <b style="color:#10b981;">[${inc.patientLat.toFixed(4)}, ${inc.patientLng.toFixed(4)}]</b><br>
+              
+              <div class="action-btn-group">
+                <button class="btn-accept" onclick="respondToSOS('${inc.incidentId}', 'ACCEPT')">✅ ACCEPT & DISPATCH AMBULANCE</button>
+                <button class="btn-decline" onclick="respondToSOS('${inc.incidentId}', 'DECLINE')">❌ DECLINE / WARD FULL</button>
+              </div>
+            </div>
+          `;
+        } else if (inc.status === 'ACCEPTED') {
+          html += `
+            <div class="app-card" style="border-left: 4px solid #10b981;">
+              <strong style="color: #10b981;">✅ DISPATCH CONFIRMED — BED LOCKED</strong><br>
+              Patient: <b>${inc.patientName}</b> | Unit: <b style="color:#38bdf8;">${inc.assignedAmbulance}</b> | Location: <b>[${inc.patientLat.toFixed(4)}, ${inc.patientLng.toFixed(4)}]</b>
+            </div>
+          `;
+        }
+      });
+
+      box.innerHTML = html || `<div style="color:#94a3b8; padding: 10px 0;">No pending emergency requests.</div>`;
+    }
+
+    async function respondToSOS(incidentId, action) {
+      const token = localStorage.getItem('hosp_jwt');
+      const res = await fetch('/api/hospital/emergency-action', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({ incidentId, action })
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        showAccessDeniedToast('Protected route: Action denied without hospital login token!');
+        return;
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        fetchDashboard();
+      } else if (data.error) {
+        alert(`Request failed: ${data.error}`);
+      }
+    }
+
+    function initHospitalSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      socket = new WebSocket(`${protocol}//${window.location.host}`);
+
+      socket.onopen = () => {
+        const statusEl = document.getElementById('connectionStatus');
+        if (statusEl) {
+          statusEl.innerText = '🟢 LIVE';
+          statusEl.style.color = '#10b981';
+        }
+      };
+
+      socket.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.topic === 'NEW_SOS_PENDING' || msg.topic === 'SOS_STATUS_UPDATED') {
+          fetchDashboard();
+        } else if (msg.topic === 'WARD_STATUS_UPDATED') {
+          updateWardsUI(msg.payload);
+        }
+      };
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // Always show login overlay on initial visit
+      document.getElementById('hospitalLoginOverlay').style.display = 'flex';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MediResQ - AI & Online Interactive Tele-Consultation</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .chat-box {
+      background: #0f172a;
+      height: 280px;
+      border-radius: 6px;
+      padding: 10px;
+      overflow-y: auto;
+      border: 1px solid #334155;
+      margin-top: 10px;
+    }
+    .chat-msg {
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 0.88rem;
+    }
+    .user-msg { background: #0284c7; color: white; margin-left: 20%; }
+    .bot-msg { background: #334155; color: #f8fafc; margin-right: 20%; line-height: 1.5; }
+    .session-room {
+      background: #1e293b;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #38bdf8;
+      margin-top: 20px;
+    }
+    #localVideo {
+      width: 100%;
+      height: 180px;
+      background: #000;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 1px solid #38bdf8;
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="brand">
+      <a href="/" class="btn btn-secondary btn-sm" style="text-decoration: none; margin-right: 6px;">⬅️ Hub</a>
+      <span style="font-size: 1.2rem;">💬</span>
+      <h1>MediResQ Interactive AI Assistant & Tele-Consultation</h1>
+    </div>
+  </header>
+
+  <main style="max-width: 1000px; margin: 20px auto; padding: 0 15px;">
+    <!-- AI CHATBOT -->
+    <section class="card">
+      <h3>🤖 AI Medical Assistant & Triage Guide</h3>
+      <p style="font-size: 0.85rem; color: #94a3b8;">Ask any medical question (symptoms, drugs, triage rules, body conditions).</p>
+
+      <div class="chat-box" id="chatContainer">
+        <div class="chat-msg bot-msg">👋 Hello! I am your AI Medical Assistant. Ask me anything about health, diseases, symptoms, or medications.</div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <input type="text" id="userInput" placeholder="Type your health or medical question..." style="flex: 1; padding: 10px; background: #1e293b; color: white; border: 1px solid #334155; border-radius: 6px;" onkeydown="if(event.key==='Enter') sendMessage()">
+        <button class="btn btn-primary" onclick="sendMessage()">Send AI Query</button>
+      </div>
+    </section>
+
+    <!-- LIVE TELE-CONSULTATION WEBRTC ROOM -->
+    <section class="session-room">
+      <h3 style="color: #38bdf8; margin-top: 0;">👨‍⚕️ Live Online Tele-Consultation Room (Doctor & Patient)</h3>
+      <p style="font-size: 0.85rem; color: #94a3b8;">Connect over live WebRTC encrypted video/audio stream using a unique Session ID.</p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 12px;">
+        <div>
+          <label style="font-size: 0.8rem; color: #cbd5e1;">SELECT YOUR ROLE</label>
+          <select id="userRole" style="width: 100%; padding: 8px; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px;">
+            <option value="Patient">👤 Patient</option>
+            <option value="Doctor">👨‍⚕️ Attending Doctor</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; color: #cbd5e1;">ONLINE SESSION ID</label>
+          <input type="text" id="sessionIdInput" value="SESS-8492" style="width: 100%; padding: 8px; background: #0f172a; color: #38bdf8; border: 1px solid #38bdf8; border-radius: 4px; font-weight: bold;">
+        </div>
+        <div style="display: flex; align-items: flex-end;">
+          <button class="btn btn-success" style="width: 100%; padding: 8px; font-weight: bold;" onclick="joinOnlineSession()">🟢 JOIN SESSION & START VIDEO</button>
+        </div>
+      </div>
+
+      <!-- ACTIVE SESSION CONTAINER -->
+      <div id="activeSessionBox" class="card hidden" style="margin-top: 15px; background: #0f172a; border-left: 5px solid #38bdf8;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <strong style="color: #38bdf8;" id="sessionTitle">Room: SESS-8492</strong>
+          <span style="color: #10b981; font-weight: bold; font-size: 0.85rem;">🟢 LIVE CONNECTED</span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-top: 10px;">
+          <!-- LIVE CHAT -->
+          <div>
+            <div id="roomChat" style="height: 180px; background: #1e293b; padding: 8px; border-radius: 4px; overflow-y: auto; border: 1px solid #334155;">
+              <div style="font-size: 0.8rem; color: #94a3b8;">[System]: Online session room initialized. Patient and Doctor connected.</div>
+            </div>
+            <div style="display: flex; gap: 6px; margin-top: 6px;">
+              <input type="text" id="roomMsgInput" placeholder="Type message in session..." style="flex: 1; padding: 6px; background: #1e293b; color: white; border: 1px solid #334155; border-radius: 4px;">
+              <button class="btn btn-sm btn-primary" onclick="sendRoomMessage()">Send</button>
+            </div>
+          </div>
+
+          <!-- WEBRTC VIDEO / AUDIO STREAM CONTAINER -->
+          <div style="background: #1e293b; padding: 10px; border-radius: 6px; text-align: center; border: 1px solid #38bdf8;">
+            <video id="localVideo" autoplay playsinline muted></video>
+            <div style="display: flex; gap: 6px; margin-top: 8px;">
+              <button class="btn btn-sm btn-secondary" id="btnAudioToggle" style="flex: 1; font-size: 0.75rem;" onclick="toggleAudio()">🎙️ Mute</button>
+              <button class="btn btn-sm btn-secondary" id="btnVideoToggle" style="flex: 1; font-size: 0.75rem;" onclick="toggleVideo()">📹 Cam Off</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let localStream = null;
+    let audioEnabled = true;
+    let videoEnabled = true;
+
+    async function sendMessage() {
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const container = document.getElementById('chatContainer');
+      container.innerHTML += `<div class="chat-msg user-msg"><b>You:</b> ${text}</div>`;
+      input.value = '';
+
+      container.innerHTML += `<div class="chat-msg bot-msg" id="loadingMsg">⏳ <i>MediResQ AI thinking...</i></div>`;
+      container.scrollTop = container.scrollHeight;
+
+      try {
+        const res = await fetch('/api/ai/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: text })
+        });
+        const data = await res.json();
+        
+        const loader = document.getElementById('loadingMsg');
+        if (loader) loader.remove();
+
+        const formattedText = data.reply.replace(/\n/g, '<br>');
+        container.innerHTML += `<div class="chat-msg bot-msg"><b>AI Assistant:</b><br>${formattedText}</div>`;
+        container.scrollTop = container.scrollHeight;
+      } catch (err) {
+        const loader = document.getElementById('loadingMsg');
+        if (loader) loader.remove();
+        container.innerHTML += `<div class="chat-msg bot-msg"><b>AI Assistant:</b> Unable to connect to backend server.</div>`;
+      }
+    }
+
+    async function startWebRTC() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('localVideo').srcObject = localStream;
+      } catch (err) {
+        console.warn("Camera/Mic access denied or unavailable, showing fallback preview:", err);
+      }
+    }
+
+    function toggleAudio() {
+      if (localStream && localStream.getAudioTracks().length > 0) {
+        audioEnabled = !audioEnabled;
+        localStream.getAudioTracks()[0].enabled = audioEnabled;
+        document.getElementById('btnAudioToggle').innerText = audioEnabled ? '🎙️ Mute' : '🎙️ Unmute';
+      }
+    }
+
+    function toggleVideo() {
+      if (localStream && localStream.getVideoTracks().length > 0) {
+        videoEnabled = !videoEnabled;
+        localStream.getVideoTracks()[0].enabled = videoEnabled;
+        document.getElementById('btnVideoToggle').innerText = videoEnabled ? '📹 Cam Off' : '📹 Cam On';
+      }
+    }
+
+    function joinOnlineSession() {
+      const role = document.getElementById('userRole').value;
+      const sessId = document.getElementById('sessionIdInput').value.trim() || 'SESS-8492';
+
+      document.getElementById('sessionTitle').innerText = `Room: ${sessId} (${role} Active)`;
+      document.getElementById('activeSessionBox').classList.remove('hidden');
+
+      const chat = document.getElementById('roomChat');
+      chat.innerHTML += `<div style="font-size: 0.82rem; color: #10b981; margin-top: 4px;"><b>[Room Alert]:</b> ${role} joined session ${sessId}. Video feed active.</div>`;
+
+      startWebRTC();
+    }
+
+    function sendRoomMessage() {
+      const role = document.getElementById('userRole').value;
+      const input = document.getElementById('roomMsgInput');
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      const chat = document.getElementById('roomChat');
+      const color = role === 'Doctor' ? '#38bdf8' : '#34d399';
+      chat.innerHTML += `<div style="font-size: 0.85rem; color: #f8fafc; margin-top: 4px;"><b style="color:${color};">${role}:</b> ${msg}</div>`;
+      input.value = '';
+      chat.scrollTop = chat.scrollHeight;
+    }
+  </script>
+</body>
+</html>
